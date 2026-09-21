@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clima Async con Django</title>
+    <link rel="stylesheet" href="{% static 'weather/style.css' %}">
+</head>
+<body>
+    <header>
+        <h1>🌤️ Clima en Tiempo Real</h1>
+        <p>
+            Peticiones asíncronas y concurrentes a la API de
+            <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>
+        </p>
+    </header>
+
+    <form method="get" class="search-form">
+        <input type="text" name="city" placeholder="Buscar otra ciudad..." value="{{ searched_city }}" maxlength="80">
+        <button type="submit">Buscar</button>
+    </form>
+
+    <section class="grid">
+        {% for result in results %}
+        <div class="card {% if result.error %}card-error{% endif %}">
+            <h2>{{ result.city }}{% if result.country %}, {{ result.country }}{% endif %}</h2>
+            {% if result.error %}
+                <p class="error">{{ result.error }}</p>
+            {% else %}
+                <p class="temp">{{ result.temperature }}°C</p>
+                <p>{{ result.description }}</p>
+                <p>Viento: {{ result.windspeed }} km/h</p>
+                <small>Actualizado: {{ result.time }}</small>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </section>
+</body>
+</html>
