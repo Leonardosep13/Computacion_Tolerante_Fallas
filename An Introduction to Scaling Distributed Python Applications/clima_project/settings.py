@@ -13,7 +13,7 @@ SECRET_KEY = "django-insecure-demo-key-clima-async-change-me"
 
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
