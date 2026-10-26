@@ -57,12 +57,16 @@ mediante `/api/resumen/` siguen pendientes.
 
 ## 4. Estructura de carpetas
 
-El proyecto vive en `ProyectoFinal/`, dentro del repositorio de la materia (`Computacion_Tolerante_Fallas/`). El `.gitignore` y el `README.md` están en la raíz de ese repositorio, no en `ProyectoFinal/`.
+El proyecto vive en `ProyectoFinal/`, dentro del repositorio de la materia
+(`Computacion_Tolerante_Fallas/`). El `.gitignore` y el README de la materia están
+en la raíz; este último enlaza a `ProyectoFinal/README.md`, la guía del proyecto
+con instalación, uso, arquitectura, tolerancia a fallas y capturas ficticias.
 
 ### 4.1 Estado actual
 
 ```
 ProyectoFinal/
+├── README.md                       # guía ilustrada del proyecto
 ├── .venv/                          # entorno virtual (ignorado por git)
 ├── .env                            # configuración local y secretos (ignorado por git)
 ├── .env.example                    # ejemplo sin secretos para nuevas instalaciones
@@ -70,7 +74,8 @@ ProyectoFinal/
 ├── db.sqlite3
 ├── requirements.txt                # Django, Pillow, python-dotenv, mcp y google-genai
 ├── docs/
-│   └── Context.md                  # este archivo
+│   ├── Context.md                  # este archivo
+│   └── screenshots/                # interfaz real, datos ficticios y chat simulado
 ├── SpendingAdmin/                  # paquete de configuración (en lugar de `gestor_gastos/`)
 │   ├── settings.py
 │   ├── environment.py              # validación de variables requeridas, booleanos y USER_ID
@@ -98,6 +103,8 @@ ProyectoFinal/
 │   ├── categories.py               # categorías, etiquetas y referencias a colores CSS
 │   ├── forms.py                    # validación de filtros GET (no CRUD)
 │   ├── services.py                 # registro, consulta y resumen por usuario, síncronos
+│   ├── exchange.py                 # Frankfurter v2, validación y conversión a MXN
+│   ├── test_exchange.py            # tasas simuladas, errores, fechas y redondeo
 │   ├── mcp_server.py               # FastMCP, categorías cerradas y ORM en hilo sync
 │   ├── views.py                    # GastoListView protegida
 │   ├── urls.py                     # /gastos/, nombre de ruta gastos
@@ -112,12 +119,17 @@ ProyectoFinal/
 │   ├── apps.py
 │   ├── history.py                  # historial de texto, máximo 20 mensajes
 │   ├── orchestrator.py             # bucle manual Gemini + MCP, compartido
-│   ├── views.py                    # ChatView, API async y limpieza del historial
-│   ├── urls.py                     # /chat/, /api/chat/, /api/chat/limpiar/
+│   ├── prompts.py                  # reglas de registro, monedas y recuperación de errores
+│   ├── views.py                    # ChatView, ChatPanelView, API async y limpieza
+│   ├── urls.py                     # /chat/, /chat/panel/, API de envío y limpieza
 │   ├── repl.py                     # ejecutar como python -m chat.repl
 │   ├── templates/chat/chat.html    # hereda de core/base.html
+│   ├── templates/chat/panel.html   # conversación reutilizada por página y widget
+│   ├── templates/chat/widget.html  # burbuja global y contenedor flotante
 │   ├── static/chat/css/chat.css
-│   ├── static/chat/js/chat.js      # fetch con CSRF y texto seguro, sin framework
+│   ├── static/chat/css/widget.css  # posición fija y panel responsive
+│   ├── static/chat/js/chat.js      # cliente reutilizable, CSRF y texto seguro
+│   ├── static/chat/js/widget.js    # apertura, carga diferida, minimizar y Escape
 │   └── tests/                      # API, servicios, SDK simulado y MCP stdio real
 └── registration/                   # autenticación y perfil; registrada en INSTALLED_APPS
     ├── models.py                   # Profile: user, avatar, bio
@@ -193,6 +205,10 @@ Implementado en `spending/models.py`. Los choices y etiquetas se derivan de
 `monto` admite de `0.01` a `99999999.99`, con dos decimales: validador en el
 modelo y restricción de BD para importes positivos. El orden es fecha, creación
 e identificador descendentes; hay un índice compuesto por usuario y fecha.
+El importe almacenado siempre es MXN. Los gastos extranjeros se convierten
+antes de guardar; la descripción conserva una referencia con monto y moneda
+originales, tasa, fecha de tasa y fuente. No hay nuevos campos ni migraciones:
+los gastos existentes y las sumas conservan su significado en MXN.
 
 ## 6. Herramientas MCP
 
@@ -200,7 +216,7 @@ Todas reciben `user_id` (lo inyecta el orquestador, ver reglas de seguridad). Lo
 
 | Tool | Firma | Devuelve |
 |---|---|---|
-| `registrar_gasto` | `(monto, categoria, descripcion, fecha=None)` | El gasto creado (id, monto, categoría, fecha) |
+| `registrar_gasto` | `(monto, categoria, descripcion="", fecha=None, moneda="MXN", tipo_cambio=None)` | Gasto en MXN y, si corresponde, detalle de conversión |
 | `obtener_resumen_gastos` | `(fecha_inicio=None, fecha_fin=None, categoria=None)` | Total, desglose por categoría y número de gastos |
 | `listar_gastos` *(opcional)* | `(limite=10)` | Últimos gastos |
 | `eliminar_gasto` *(opcional)* | `(id)` | Confirmación; pedir confirmación al usuario antes de borrar |
@@ -223,6 +239,52 @@ directamente en el event loop. Los errores de validación se devuelven como
 `{"error": "..."}`; MCP transporta los errores de esquema. stdout queda reservado
 al protocolo: los checks automáticos del comando están desactivados y los logs
 del servidor van a stderr.
+
+### Monedas extranjeras y recuperación ante errores
+
+- `chat/prompts.py` centraliza las instrucciones compartidas por pantalla,
+  burbuja y REPL. Se inyecta la fecha local en cada petición. Gemini extrae
+  el monto original, código ISO y fecha, pero **no calcula ni inventa tasas**.
+  Sin moneda ni contexto extranjero se mantiene MXN. Monedas ambiguas
+  (por ejemplo, "dólares" sin país) o separadores/fechas ambiguos requieren
+  aclaración antes de guardar.
+- `registrar_gasto` llama a `services.registrar_gasto_en_moneda`. Para MXN
+  conserva el flujo local, sin red ni referencia extra. Para otras monedas,
+  `exchange.py` consulta `https://api.frankfurter.dev/v2/rate/ISO/MXN?date=YYYY-MM-DD`
+  con el código ISO normalizado y la fecha del gasto, no la fecha de hoy
+  para gastos pasados. Solo envía par de monedas y fecha: nunca importe,
+  usuario, descripción, historial ni credenciales. No requiere API key nueva.
+- Se usa el cliente HTTP con timeout de 8 segundos por fase, HTTPS fijo y sin
+  redirecciones. No hay reintentos automáticos ni fallback silencioso a tasas
+  fijas o del modelo. Se validan par, tasa positiva/finita y fecha: se acepta
+  la fecha solicitada o una anterior de hasta 7 días (festivos/fines de semana);
+  se rechazan tasas futuras, más antiguas o sin fecha. La confirmación debe
+  mostrar la fecha real devuelta si difiere de la fecha del gasto.
+- La conversión usa `Decimal` desde el JSON recibido hasta el guardado, sin
+  pasar por float, y redondea a centavos con `ROUND_HALF_UP`. El importe original
+  admite hasta 8 decimales y la tasa hasta 12; el resultado debe caber en el
+  rango del modelo. Gastos extranjeros con fecha futura se rechazan.
+- Si hay timeout, error HTTP (incluidos cuota o moneda no cubierta), JSON o
+  tasa inválidos, **no se crea el gasto**. La tool devuelve un error claro:
+  pedir al usuario el tipo de cambio en MXN por 1 unidad extranjera o el
+  importe final del cargo en MXN. No se interpreta el monto extranjero como
+  pesos para aparentar éxito. `tipo_cambio` permite el valor explícito dado
+  por el usuario y no consulta la API; la fuente queda marcada como `usuario`.
+  La atribución de esa tasa al mensaje del usuario depende de las reglas
+  del prompt; el servidor valida formato y rango, no interpreta lenguaje natural.
+- Si el usuario proporciona el cargo final en MXN, se registra ese importe
+  con `moneda="MXN"` y sin tasa, evitando doble conversión. No se acepta una
+  tasa en un registro ya expresado en MXN. Las tasas públicas son referencias,
+  no cargos bancarios garantizados ni importes con comisiones.
+- La respuesta de registro extranjero incluye `conversion` con
+  `monto_original`, `moneda_original`, `monto_mxn`, `tipo_cambio`, `fecha_tasa`
+  y `fuente`, todos como texto. La descripción conserva esa referencia para
+  consultarla desde Gastos/Admin; si no cabe en 200 caracteres, se pide
+  acortarla **sin truncarla ni guardar parcialmente**.
+- Ejemplos: "Gasté 10 USD en comida ayer" consulta la tasa histórica y registra
+  MXN; "Gasté 10 dólares en comida" pide aclarar qué dólar; tras un fallo,
+  "Para ese gasto usa 18.50 MXN por USD" permite la tasa manual. Una consulta
+  o ejemplo de conversión no autoriza a crear un gasto.
 
 ## 7. Reglas no negociables
 
@@ -271,6 +333,7 @@ def esquema_sin_user(schema: dict) -> dict:
 | `/` | Template | Dashboard: total del mes, últimos gastos, gráfica por categoría | Bienvenida con accesos a Chat y Gastos (`HomeView`); el dashboard falta |
 | `/gastos/` | Template | Tabla con filtros por fecha y categoría, y paginación | Implementada en `spending`; sesión requerida |
 | `/chat/` | Template | Interfaz de chat | Implementada; sesión requerida |
+| `/chat/panel/` | HTML parcial, GET | Mismo chat para el panel flotante | Implementada; sesión y no-store; sin llamadas al modelo |
 | `/api/chat/` | JSON, POST, async | Recibe `{"mensaje"}`, ejecuta orquestador y devuelve respuesta y llamadas | Implementada; sesión y CSRF requeridos |
 | `/api/chat/limpiar/` | JSON, POST, async | Limpia solo el historial de conversación | Implementada; sesión y CSRF requeridos |
 | `/api/resumen/` | JSON, GET | Datos para Chart.js; el JS lo pide tras cada respuesta del chat para refrescar la gráfica y la tabla sin recargar | Pendiente |
@@ -282,6 +345,21 @@ Nombres de ruta actuales (`{% url %}`): `home`, `chat`, `gastos`. La sidebar los
 - `/chat/` conserva la paleta y el layout; ofrece sugerencias que solo rellenan
   el mensaje, burbujas de usuario/asistente, trazas de tools y nueva conversación
   con confirmación en pantalla. No envía nada a Gemini al abrir la página.
+- Todas las vistas que heredan de `core/base.html` ofrecen una burbuja fija
+  abajo a la derecha para usuarios autenticados (también en Perfil y contraseñas).
+  Abre un diálogo no modal sin abandonar la vista actual, con acceso al chat
+  completo, botón de minimizar y Escape; al cerrar devuelve el foco al botón.
+  No se muestra en páginas públicas sin sesión ni modifica el Admin nativo.
+- El panel se carga al abrirlo por primera vez desde `/chat/panel/`, con el
+  mismo template de conversación, historial de sesión y endpoints del chat
+  completo. Se conserva al minimizar, incluidas solicitudes en curso. No
+  guarda conversaciones en localStorage ni envía nada a Gemini al abrir.
+  Un fallo de carga muestra un error y reintento explícito.
+- `chat.js` inicializa cada instancia con IDs propios. Cuando conviven la
+  pantalla completa y la burbuja, comparten historial y bloqueo de envío:
+  una respuesta o limpieza se refleja en ambas; no hay envíos simultáneos
+  entre estas dos interfaces de la misma página. Este bloqueo no es global
+  entre pestañas. Las vistas de conversación evitan caché del historial privado.
 - `chat.js` usa `fetch` con `X-CSRFToken`, renderiza mediante `textContent`
   (no interpreta HTML ni Markdown), bloquea envíos simultáneos desde la interfaz
   y permite Enter para enviar, Shift+Enter para salto de línea. JavaScript es
@@ -321,7 +399,8 @@ Nombres de ruta actuales (`{% url %}`): `home`, `chat`, `gastos`. La sidebar los
   las trazas no se guardan en la sesión, solo el texto de los mensajes.
 - La pantalla informa que los mensajes y los resultados de consultas se envían
   a Google Gemini. No incluir credenciales ni datos sensibles. Las claves solo
-  están en el backend.
+  están en el backend. Pantalla, burbuja y REPL informan también de la consulta
+  de par de monedas y fecha a Frankfurter.
 
 Desde `ProyectoFinal/`, para el cliente local de desarrollo:
 
@@ -472,7 +551,11 @@ Reglas de UI:
 - Sin sesión se comparten header y footer, pero no se renderiza la sidebar ni su botón. El script del layout contempla esa ausencia. Las pantallas de acceso usan una tarjeta centrada y estilos en `registration/static/registration/css/account.css`, sin dependencias de frontend nuevas ni colores fuera de la paleta compartida.
 - Con sesión, el header incluye acceso a Mi perfil y un formulario POST con CSRF para Cerrar sesión. Al salir se redirige a `home`, que al no tener sesión muestra el login.
 - Para añadir una sección al menú, agregar un `<a class="nav-link">` en `base.html` (con su ícono y su nombre de ruta para el estado activo) y la URL correspondiente.
-- `/chat/` usa `chat/chat.html` con CSS/JS propios y el layout común.
+- `/chat/` usa `chat/chat.html` y el panel reutilizable `chat/panel.html`.
+  El layout carga CSS/JS del chat y de la burbuja solo cuando hay sesión;
+  `chat/widget.html` contiene la burbuja global. El panel ajusta su altura
+  al viewport móvil y mantiene desplazamiento interno. Sin JavaScript,
+  la burbuja es un enlace al chat completo.
   `proximamente.html` y `UpcomingView` se conservan como utilidades sin rutas activas.
 - `/gastos/` usa `spending/gasto_list.html` y su CSS propio, sin dependencias
   frontend nuevas. En móvil, las filas se redistribuyen como tarjetas conservando
@@ -493,6 +576,8 @@ firmas/IDs, límite de rondas/tools, respuestas vacías/truncadas, cuota y timeo
 Un transporte HTTP en memoria ejercita la serialización del SDK real sin red.
 La regresión de respuestas a tools valida también la segunda petición al
 proveedor: roles válidos, ID, firma y datos MCP antes de la respuesta final.
+Los argumentos de moneda y monto original atraviesan el orquestador sin
+conversión del modelo; el detalle de conversión o el error vuelven a Gemini.
 Además, una prueba arranca `run_mcp` como subproceso real, hace initialize,
 list_tools y call_tool y verifica registro/resumen/listado y aislamiento en una
 SQLite temporal creada exclusivamente para el test. Ninguna prueba envía datos
@@ -500,6 +585,20 @@ reales ni consume cuota de Gemini.
 Este test también conecta el orquestador y el SDK real con HTTP simulado:
 consulta el resumen mediante FastMCP real y verifica su llegada al modelo y
 la respuesta final, no solo que la tool se complete.
+Las pruebas del widget cubren presencia en vistas de aplicación y cuenta,
+ausencia sin sesión, carga parcial protegida sin otro layout, no-store,
+configuración ausente, privacidad de claves, historial compartido y aislado,
+limpieza y escape seguro. Abrir el panel no llama al modelo.
+
+`spending/test_exchange.py` usa transporte HTTP en memoria para comprobar
+parámetros públicos, tasas actuales/históricas, fechas de referencia,
+redondeo exacto, monedas locales sin red y tasas manuales. Cubre timeout,
+fallos HTTP, cuotas, moneda no soportada, JSON inválido, par equivocado,
+tasas no finitas/negativas/antiguas/futuras y límites. `chat/tests/test_tools.py`
+verifica importes MXN persistidos, referencia de origen, aislamiento,
+ausencia de guardado al fallar y recuperación con tasa manual. La integración
+stdio también registra moneda extranjera con tasa manual y verifica su suma
+en MXN. Ninguna de estas pruebas consulta una API de tasas real.
 
 `spending/tests.py` cubre el modelo, importes Decimal, validadores, restricción de
 BD, categorías y fecha de Guadalajara; filtros opcionales e inclusivos y errores;
@@ -550,8 +649,11 @@ Pruebas por implementar:
 protocolo stdio y SDK simulado; la integración con Gemini real requiere probar
 el modelo/cuota elegidos. La eliminación opcional sigue pendiente. Del paso 7
 está lista `/gastos/`; faltan dashboard, API de resumen y refresco en vivo. Del
-paso 8 existen layout, paleta, cuentas, listado y chat responsive. Falta el README
-final. `spending` y `chat` están registradas en `INSTALLED_APPS`.
+paso 8 existen layout, paleta, cuentas, listado, chat responsive y README
+ilustrado en `ProyectoFinal/README.md`, enlazado desde la raíz del repositorio.
+Las capturas usan datos ficticios y respuestas de chat explícitamente simuladas;
+no son evidencia de ejecución de Gemini real. `spending` y `chat` están
+registradas en `INSTALLED_APPS`.
 
 ## 12. Convenciones para agentes
 

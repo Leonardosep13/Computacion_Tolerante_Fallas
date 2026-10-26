@@ -18,6 +18,7 @@ async def conversar(usuario_id):
     historial = []
     print("Chat de gastos. /salir para terminar; /limpiar borra el historial, no los gastos.")
     print("Tus mensajes y los resultados de las consultas se enviarán a Google Gemini.")
+    print("Para convertir monedas, Frankfurter recibe solo el par de monedas y la fecha.")
     while True:
         try:
             mensaje = (await asyncio.to_thread(input, "Tú: ")).strip()

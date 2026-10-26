@@ -7,6 +7,7 @@ from django.db.models import Count, Sum
 from django.utils import timezone
 
 from .categories import CATEGORIAS
+from .exchange import Conversion, convertir_a_mxn
 from .models import Gasto
 
 
@@ -76,6 +77,29 @@ def registrar_gasto(usuario_id, *, monto, categoria, descripcion="", fecha=None)
     gasto.full_clean()
     gasto.save()
     return gasto
+
+
+def registrar_gasto_en_moneda(
+    usuario_id: int, *, monto: str, categoria: str, descripcion: str = "",
+    fecha: str | None = None, moneda: str = "MXN", tipo_cambio: str | None = None,
+) -> tuple[Gasto, Conversion]:
+    fecha_gasto = validar_fecha(fecha) or timezone.localdate()
+    if categoria not in CATEGORIAS:
+        raise ValidationError("Selecciona una categoría válida.")
+    descripcion = Gasto._meta.get_field("descripcion").clean(descripcion, None)
+    conversion = convertir_a_mxn(monto, moneda, fecha_gasto, tipo_cambio)
+    if conversion.moneda_original != "MXN":
+        descripcion = f"{descripcion} {conversion.referencia()}".strip()
+        if len(descripcion) > 200:
+            raise ValidationError(
+                "No se registró el gasto. Acorta la descripción para conservar la "
+                "referencia de conversión dentro de los 200 caracteres permitidos."
+            )
+    gasto = registrar_gasto(
+        usuario_id, monto=conversion.monto_mxn, categoria=categoria,
+        descripcion=descripcion, fecha=fecha_gasto,
+    )
+    return gasto, conversion
 
 
 def obtener_resumen_gastos(usuario_id, *, fecha_inicio=None, fecha_fin=None, categoria=None):

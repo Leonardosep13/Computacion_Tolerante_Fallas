@@ -1,69 +1,11 @@
 {% extends "core/base.html" %}
-{% load static %}
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'chat/css/chat.css' %}">
-<script src="{% static 'chat/js/chat.js' %}" defer></script>
-{% endblock %}
 {% block content %}
 <section class="page-heading chat-page-heading">
     <p class="eyebrow">TUS FINANZAS, EN UNA CONVERSACIÓN</p>
     <h1>Chat</h1>
     <p>Registra un gasto, consulta tu historial o descubre en qué estás gastando.</p>
 </section>
-<section class="chat-panel" aria-labelledby="chat-title" id="chat-app"
-    data-endpoint="{% url 'chat_api' %}" data-clear-endpoint="{% url 'chat_limpiar' %}"
-    data-login-url="{% url 'login' %}?next={% url 'chat' %}">
-    <header class="chat-header">
-        <div class="chat-assistant">
-            <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg></span>
-            <div>
-                <h2 id="chat-title">Tu asistente de gastos</h2>
-                <p>{% if chat_configurado %}Gemini · listo para conversar{% else %}Configuración pendiente{% endif %}</p>
-            </div>
-        </div>
-        <button type="button" class="chat-clear" id="chat-clear" disabled>Nueva conversación</button>
-    </header>
-    <div class="chat-confirm" id="chat-clear-confirmation" role="region" aria-label="Confirmar nueva conversación" hidden>
-        <p>¿Borrar la conversación? Tus gastos no se eliminarán.</p>
-        <div>
-            <button type="button" class="chat-clear" id="chat-clear-cancel">Cancelar</button>
-            <button type="button" class="chat-clear" id="chat-clear-accept">Sí, borrar conversación</button>
-        </div>
-    </div>
-    {% if not chat_configurado %}
-    <div class="chat-notice" role="status">
-        Para activar el asistente, configura GEMINI_API_KEY y GEMINI_MODEL en el servidor y reinícialo.
-    </div>
-    {% endif %}
-    <div class="chat-messages" id="chat-messages" role="log" aria-label="Conversación con el asistente" aria-live="polite" aria-relevant="additions" tabindex="0">
-        <div class="chat-welcome" id="chat-welcome">
-            <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-wallet"/></svg></span>
-            <h3>Menos cuentas. Más claridad.</h3>
-            <p>Cuéntame qué necesitas. Puedo ayudarte con tus gastos en pesos mexicanos.</p>
-            <div class="chat-suggestions" aria-label="Ejemplos de consultas">
-                <button type="button" data-suggestion="¿Cuánto llevo gastado este mes?" disabled>Resumen del mes</button>
-                <button type="button" data-suggestion="Muéstrame mis últimos gastos" disabled>Mis últimos gastos</button>
-                <button type="button" data-suggestion="Quiero registrar un gasto" disabled>Registrar un gasto</button>
-            </div>
-        </div>
-    </div>
-    <div class="chat-status" id="chat-status" role="status"></div>
-    <div class="chat-error" id="chat-error" role="alert" hidden></div>
-    <div class="chat-composer">
-        <label class="chat-input-label" for="chat-message">Tu mensaje</label>
-        <textarea id="chat-message" rows="2" maxlength="{{ max_mensaje }}" placeholder="Por ejemplo: gasté 250 en comida ayer" aria-describedby="chat-input-help chat-privacy" disabled></textarea>
-        <div class="chat-composer-actions">
-            <span id="chat-input-help">Enter para enviar · Shift + Enter para un salto de línea</span>
-            <button type="button" class="chat-send" id="chat-send" disabled>Enviar <svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
-        </div>
-    </div>
-    <footer class="chat-footer">
-        <p id="chat-privacy"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg> Al enviar, tus mensajes y los resultados de las consultas se comparten con Google Gemini. No incluyas datos sensibles.</p>
-        <a href="{% url 'gastos' %}">Ver mis gastos <span aria-hidden="true">↗</span></a>
-    </footer>
-</section>
+{% include "chat/panel.html" %}
 <p class="chat-disclaimer">El asistente puede equivocarse. Revisa tus movimientos después de registrarlos. La edición y eliminación se realizan en el Admin.</p>
 <noscript><p class="chat-notice">Necesitas JavaScript para enviar mensajes. Puedes consultar tus movimientos en <a href="{% url 'gastos' %}">Gastos</a>.</p></noscript>
-{{ historial|json_script:"chat-history" }}
-{{ chat_configurado|json_script:"chat-configured" }}
 {% endblock %}

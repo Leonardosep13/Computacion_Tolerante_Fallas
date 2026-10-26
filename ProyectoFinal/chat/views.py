@@ -3,6 +3,7 @@ import json
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
@@ -12,16 +13,24 @@ from .orchestrator import ErrorChat, configurado, responder
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
+@method_decorator(never_cache, name="dispatch")
 class ChatView(LoginRequiredMixin, TemplateView):
     template_name = "chat/chat.html"
     extra_context = {"title": "Chat"}
+    chat_prefix = "chat"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["chat_configurado"] = configurado()
         context["historial"] = self.request.session.get(SESSION_KEY, [])
         context["max_mensaje"] = MAX_MENSAJE
+        context["chat_prefix"] = self.chat_prefix
         return context
+
+
+class ChatPanelView(ChatView):
+    template_name = "chat/panel.html"
+    chat_prefix = "chat-widget"
 
 
 @require_POST

@@ -1,0 +1,57 @@
+<section class="chat-panel" aria-labelledby="{{ chat_prefix }}-title" id="{{ chat_prefix }}-app" data-chat-app
+    data-prefix="{{ chat_prefix }}"
+    data-endpoint="{% url 'chat_api' %}" data-clear-endpoint="{% url 'chat_limpiar' %}"
+    data-login-url="{% url 'login' %}?next={% url 'chat' %}">
+    <header class="chat-header">
+        <div class="chat-assistant">
+            <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg></span>
+            <div>
+                <h2 id="{{ chat_prefix }}-title">Tu asistente de gastos</h2>
+                <p>{% if chat_configurado %}Gemini · listo para conversar{% else %}Configuración pendiente{% endif %}</p>
+            </div>
+        </div>
+        <button type="button" class="chat-clear" id="{{ chat_prefix }}-clear" disabled>Nueva conversación</button>
+    </header>
+    <div class="chat-confirm" id="{{ chat_prefix }}-clear-confirmation" role="region" aria-label="Confirmar nueva conversación" hidden>
+        <p>¿Borrar la conversación? Tus gastos no se eliminarán.</p>
+        <div>
+            <button type="button" class="chat-clear" id="{{ chat_prefix }}-clear-cancel">Cancelar</button>
+            <button type="button" class="chat-clear" id="{{ chat_prefix }}-clear-accept">Sí, borrar conversación</button>
+        </div>
+    </div>
+    {% if not chat_configurado %}
+    <div class="chat-notice" role="status">
+        Para activar el asistente, configura GEMINI_API_KEY y GEMINI_MODEL en el servidor y reinícialo.
+    </div>
+    {% endif %}
+    <div class="chat-messages" id="{{ chat_prefix }}-messages" role="log" aria-label="Conversación con el asistente" aria-live="polite" aria-relevant="additions" tabindex="0">
+        <div class="chat-welcome" id="{{ chat_prefix }}-welcome">
+            <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-wallet"/></svg></span>
+            <h3>Menos cuentas. Más claridad.</h3>
+            <p>Cuéntame qué necesitas. Puedo ayudarte con tus gastos en pesos mexicanos.</p>
+            <div class="chat-suggestions" aria-label="Ejemplos de consultas">
+                <button type="button" data-suggestion="¿Cuánto llevo gastado este mes?" disabled>Resumen del mes</button>
+                <button type="button" data-suggestion="Muéstrame mis últimos gastos" disabled>Mis últimos gastos</button>
+                <button type="button" data-suggestion="Quiero registrar un gasto" disabled>Registrar un gasto</button>
+            </div>
+        </div>
+    </div>
+    <div class="chat-status" id="{{ chat_prefix }}-status" role="status"></div>
+    <div class="chat-error" id="{{ chat_prefix }}-error" role="alert" hidden></div>
+    <div class="chat-composer">
+        <label class="chat-input-label" for="{{ chat_prefix }}-message">Tu mensaje</label>
+        <textarea id="{{ chat_prefix }}-message" rows="2" maxlength="{{ max_mensaje }}" placeholder="Por ejemplo: gasté 250 en comida ayer" aria-describedby="{{ chat_prefix }}-input-help {{ chat_prefix }}-privacy" disabled></textarea>
+        <div class="chat-composer-actions">
+            <span id="{{ chat_prefix }}-input-help">Enter para enviar · Shift + Enter para un salto de línea</span>
+            <button type="button" class="chat-send" id="{{ chat_prefix }}-send" disabled>Enviar <svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+        </div>
+    </div>
+    <footer class="chat-footer">
+        <p id="{{ chat_prefix }}-privacy"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg> Al enviar, tus mensajes y resultados se comparten con Google Gemini. Para convertir monedas, Frankfurter recibe solo el par de monedas y la fecha. No incluyas datos sensibles.</p>
+        <a href="{% url 'gastos' %}">Ver mis gastos <span aria-hidden="true">↗</span></a>
+    </footer>
+    {% with history_id=chat_prefix|add:"-history" configured_id=chat_prefix|add:"-configured" %}
+    {{ historial|json_script:history_id }}
+    {{ chat_configurado|json_script:configured_id }}
+    {% endwith %}
+</section>

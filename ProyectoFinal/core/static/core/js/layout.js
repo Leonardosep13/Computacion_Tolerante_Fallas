@@ -7,6 +7,7 @@
     const backdrop = document.querySelector(".sidebar-backdrop");
     const main = document.querySelector(".app-main");
     const footer = document.querySelector(".app-footer");
+    const chatWidget = document.querySelector("#chat-widget");
     const mobile = window.matchMedia("(max-width: 760px)");
     let expanded = !mobile.matches;
 
@@ -19,6 +20,7 @@
         sidebar.inert = mobile.matches && !expanded;
         main.inert = mobile.matches && expanded;
         footer.inert = mobile.matches && expanded;
+        if (chatWidget) chatWidget.inert = mobile.matches && expanded;
     }
 
     function closeMenu() {

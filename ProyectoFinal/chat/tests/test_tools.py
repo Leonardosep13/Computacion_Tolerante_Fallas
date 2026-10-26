@@ -92,3 +92,78 @@ class SpendingChatServicesTests(TestCase):
                     nombre, {"user_id": self.usuario.pk, **datos}
                 )
                 self.assertIn("error", datos_bloques(resultado))
+
+    @patch("spending.exchange.obtener_tasa", return_value=(Decimal("18.7388"), date(2026, 1, 15)))
+    def test_foreign_currency_registration_stores_only_mxn_and_keeps_conversion_reference(self, tasa):
+        servidor = crear_servidor(self.usuario.pk)
+        resultado = async_to_sync(servidor.call_tool)("registrar_gasto", {
+            "user_id": self.usuario.pk, "monto": "10.00", "moneda": "USD",
+            "categoria": "comida", "descripcion": "Almuerzo", "fecha": "2026-01-15",
+        })
+        datos = datos_bloques(resultado)
+        self.assertNotIn("error", datos)
+        self.assertEqual(datos["moneda"], "MXN")
+        self.assertEqual(datos["monto"], "187.39")
+        self.assertEqual(datos["conversion"]["tipo_cambio"], "18.7388")
+        self.assertEqual(datos["conversion"]["fuente"], "Frankfurter")
+        gasto = Gasto.objects.get(usuario=self.usuario)
+        self.assertEqual(gasto.monto, Decimal("187.39"))
+        self.assertEqual(gasto.fecha, date(2026, 1, 15))
+        self.assertIn("10 USD", gasto.descripcion)
+        self.assertIn("18.7388 MXN", gasto.descripcion)
+        self.assertIn("2026-01-15; Frankfurter", gasto.descripcion)
+        resumen = services.obtener_resumen_gastos(self.usuario.pk)
+        self.assertEqual(resumen["total"], Decimal("187.39"))
+        tasa.assert_called_once_with("USD", date(2026, 1, 15))
+
+    @patch("spending.exchange.obtener_tasa", side_effect=ValidationError("No hay tasa disponible."))
+    def test_failed_lookup_saves_nothing_and_user_rate_can_correct_it(self, tasa):
+        servidor = crear_servidor(self.usuario.pk)
+        argumentos = {
+            "user_id": self.usuario.pk, "monto": "10", "moneda": "CAD",
+            "categoria": "transporte", "fecha": "2026-01-15",
+        }
+        error = datos_bloques(async_to_sync(servidor.call_tool)("registrar_gasto", argumentos))
+        self.assertIn("error", error)
+        self.assertFalse(Gasto.objects.exists())
+        exito = datos_bloques(async_to_sync(servidor.call_tool)(
+            "registrar_gasto", {**argumentos, "tipo_cambio": "13.25"}
+        ))
+        self.assertEqual(exito["monto"], "132.50")
+        self.assertEqual(exito["conversion"]["fuente"], "usuario")
+        self.assertEqual(Gasto.objects.count(), 1)
+        self.assertIn("usuario", Gasto.objects.get().descripcion)
+        tasa.assert_called_once()
+
+    @patch("spending.exchange.obtener_tasa")
+    def test_owner_invalid_data_and_mxn_do_not_contact_exchange_provider(self, tasa):
+        servidor = crear_servidor(self.usuario.pk)
+        for cambios in (
+            {"user_id": self.otro.pk}, {"categoria": "inventada"}, {"monto": "-1"},
+            {"descripcion": "x" * 201}, {"fecha": "mañana"}, {"moneda": "$"},
+            {"tipo_cambio": "-1"}, {"fecha": "2999-01-01"},
+        ):
+            with self.subTest(cambios=cambios):
+                resultado = async_to_sync(servidor.call_tool)("registrar_gasto", {
+                    "user_id": self.usuario.pk, "monto": "10", "moneda": "EUR",
+                    "categoria": "comida", **cambios,
+                })
+                self.assertIn("error", datos_bloques(resultado))
+        self.assertFalse(Gasto.objects.exists())
+        resultado = async_to_sync(servidor.call_tool)("registrar_gasto", {
+            "user_id": self.usuario.pk, "monto": "10.10", "categoria": "comida",
+        })
+        datos = datos_bloques(resultado)
+        self.assertEqual(datos["monto"], "10.10")
+        self.assertNotIn("conversion", datos)
+        self.assertEqual(Gasto.objects.get().descripcion, "")
+        tasa.assert_not_called()
+
+    def test_long_description_is_not_silently_truncated_to_store_conversion(self):
+        servidor = crear_servidor(self.usuario.pk)
+        resultado = async_to_sync(servidor.call_tool)("registrar_gasto", {
+            "user_id": self.usuario.pk, "monto": "10", "moneda": "EUR",
+            "tipo_cambio": "20", "categoria": "comida", "descripcion": "x" * 190,
+        })
+        self.assertIn("Acorta la descripción", datos_bloques(resultado)["error"])
+        self.assertFalse(Gasto.objects.exists())

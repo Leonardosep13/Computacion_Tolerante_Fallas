@@ -53,6 +53,29 @@ class LayoutTests(TestCase):
         self.assertTemplateUsed(response, "chat/chat.html")
         self.assertNotContains(response, "PRÓXIMAMENTE")
 
+    def test_floating_chat_is_shared_on_application_and_account_pages(self):
+        for name in ("home", "chat", "gastos", "profile", "profile_email",
+                     "password_change", "password_change_done"):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name))
+                self.assertEqual(response.status_code, 200)
+                self.assertTemplateUsed(response, "chat/widget.html")
+                self.assertContains(response, 'id="chat-widget-toggle"', count=1)
+                self.assertContains(response, 'aria-controls="chat-widget-window"')
+                self.assertContains(response, f'data-panel-url="{reverse("chat_panel")}"')
+                self.assertContains(response, 'id="chat-widget-window" role="dialog"')
+                self.assertContains(response, "chat/js/chat.js", count=1)
+                self.assertContains(response, "chat/js/widget.js", count=1)
+                self.assertNotContains(response, 'id="chat-widget-app"')
+
+    def test_public_account_pages_do_not_offer_private_chat(self):
+        self.client.logout()
+        for name in ("login", "signup", "password_reset", "password_reset_complete"):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name))
+                self.assertNotContains(response, 'id="chat-widget-toggle"')
+                self.assertNotContains(response, "chat/js/widget.js")
+
     def test_static_assets_are_discoverable(self):
         from django.contrib.staticfiles import finders
 

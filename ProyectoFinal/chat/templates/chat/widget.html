@@ -1,0 +1,27 @@
+<aside class="chat-widget" id="chat-widget" aria-label="Acceso rápido al asistente"
+    data-panel-url="{% url 'chat_panel' %}" data-login-url="{% url 'login' %}?next={% url 'chat' %}">
+    <section class="chat-widget-window" id="chat-widget-window" role="dialog"
+        aria-modal="false" aria-labelledby="chat-widget-heading" hidden>
+        <header class="chat-widget-toolbar">
+            <h2 id="chat-widget-heading">Chat</h2>
+            <div>
+                <a class="chat-widget-expand" href="{% url 'chat' %}">Abrir pantalla completa <span aria-hidden="true">↗</span></a>
+                <button type="button" class="icon-button" id="chat-widget-close" aria-label="Minimizar chat">
+                    <svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg>
+                </button>
+            </div>
+        </header>
+        <div class="chat-widget-loading" id="chat-widget-loading" role="status">Cargando conversación…</div>
+        <div class="chat-widget-loading" id="chat-widget-failure" hidden>
+            <p id="chat-widget-load-error" role="alert"></p>
+            <button type="button" class="chat-clear" id="chat-widget-retry">Reintentar</button>
+            <a href="{% url 'chat' %}">Ir al chat completo</a>
+        </div>
+        <div class="chat-widget-content" id="chat-widget-content"></div>
+    </section>
+    <button type="button" class="chat-widget-toggle" id="chat-widget-toggle"
+        aria-label="Abrir chat de gastos" aria-controls="chat-widget-window" aria-expanded="false" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg>
+    </button>
+    <noscript><a class="chat-widget-toggle" href="{% url 'chat' %}" aria-label="Ir al chat de gastos"><svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg></a></noscript>
+</aside>

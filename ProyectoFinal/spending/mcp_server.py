@@ -37,19 +37,29 @@ def crear_servidor(usuario_id: int) -> FastMCP:
     @servidor.tool()
     async def registrar_gasto(
         user_id: int, monto: str, categoria: Categoria, descripcion: str = "",
-        fecha: str | None = None,
+        fecha: str | None = None, moneda: str = "MXN", tipo_cambio: str | None = None,
     ) -> dict:
-        """Registra UN gasto propio en MXN. Monto como texto decimal ('250.00'),
-        positivo, máximo 99999999.99 y dos decimales. Fecha YYYY-MM-DD; sin fecha
-        usa hoy en Guadalajara. Ejemplo: 250.00, comida, tacos, 2026-01-15.
+        """Registra UN gasto propio y almacena MXN. Envía el monto ORIGINAL como
+        texto decimal positivo y moneda ISO (MXN por defecto; USD, EUR, CAD...).
+        Para moneda extranjera consulta Frankfurter a la fecha del gasto y calcula
+        la conversión; NO conviertas antes de llamar. tipo_cambio es opcional:
+        solo si el usuario lo dio explícitamente en MXN por 1 unidad extranjera.
+        Si falla la tasa no guarda nada: pide tasa al usuario o cargo final en MXN.
+        MXN admite dos decimales; el resultado debe ser 0.01 a 99999999.99 MXN.
+        Fecha YYYY-MM-DD; sin fecha usa hoy en Guadalajara. No fechas futuras
+        para conversiones. Devuelve monto guardado en MXN y detalle de conversión.
         No repetir una operación exitosa. Si faltan monto o categoría, preguntar.
         """
         def registrar(usuario_id, **datos):
-            return serializar_gasto(services.registrar_gasto(usuario_id, **datos))
+            gasto, conversion = services.registrar_gasto_en_moneda(usuario_id, **datos)
+            resultado = {**serializar_gasto(gasto), "moneda": "MXN"}
+            if conversion.moneda_original != "MXN":
+                resultado["conversion"] = conversion.datos()
+            return resultado
 
         return await sync_to_async(ejecutar)(
             user_id, registrar, monto=monto, categoria=categoria,
-            descripcion=descripcion, fecha=fecha,
+            descripcion=descripcion, fecha=fecha, moneda=moneda, tipo_cambio=tipo_cambio,
         )
 
     @servidor.tool()

@@ -1,0 +1,50 @@
+.chat-widget { position: fixed; right: max(24px, env(safe-area-inset-right)); bottom: max(24px, env(safe-area-inset-bottom)); width: min(420px, calc(100% - 48px)); z-index: 5; pointer-events: none; }
+.chat-widget-toggle { display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-left: auto; border: 0; border-radius: 50%; background: var(--primary); color: var(--surface); box-shadow: var(--shadow); pointer-events: auto; }
+.chat-widget-toggle:hover { background: var(--primary-hover); }
+.chat-widget-toggle .icon { width: 26px; height: 26px; }
+.chat-widget-window { display: flex; flex-direction: column; width: 100%; height: min(680px, calc(100dvh - var(--header-height) - 120px)); margin-bottom: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; pointer-events: auto; }
+.chat-widget-toolbar { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; background: var(--primary-soft); border-bottom: 1px solid var(--border); }
+.chat-widget-toolbar h2 { margin: 0; font-size: 14px; }
+.chat-widget-toolbar > div { display: flex; align-items: center; gap: 12px; }
+.chat-widget-expand { color: var(--primary); font-size: 11px; }
+.chat-widget-toolbar .icon-button { width: 36px; height: 36px; }
+.chat-widget-loading { padding: 24px 16px; color: var(--text-secondary); font-size: 13px; }
+.chat-widget-loading p { margin-top: 0; }
+.chat-widget-loading a { color: var(--primary); font-size: 12px; }
+.chat-widget-content { display: flex; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.chat-widget-content .chat-panel { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 320px; border: 0; border-radius: 0; box-shadow: none; overflow: hidden; }
+.chat-widget .chat-panel > :not(.chat-messages) { flex-shrink: 0; }
+.chat-widget .chat-header { gap: 8px; padding: 14px 16px; flex-wrap: wrap; }
+.chat-widget .chat-assistant .feature-icon { display: none; }
+.chat-widget .chat-header h2 { font-size: 14px; }
+.chat-widget .chat-header p { font-size: 11px; }
+.chat-widget .chat-clear { font-size: 11px; padding: 7px 9px; }
+.chat-widget .chat-messages { height: auto; max-height: none; min-height: 70px; flex: 1 1 150px; padding: 16px; gap: 14px; }
+.chat-widget .chat-welcome { padding: 0; }
+.chat-widget .chat-welcome > .feature-icon { display: none; }
+.chat-widget .chat-welcome h3 { font-size: 18px; margin: 4px 0 10px; }
+.chat-widget .chat-welcome > p { font-size: 12px; }
+.chat-widget .chat-suggestions { margin-top: 14px; gap: 6px; }
+.chat-widget .chat-suggestions button { padding: 7px 9px; font-size: 11px; }
+.chat-widget .chat-message { max-width: 96%; }
+.chat-widget .chat-bubble { padding: 10px 12px; font-size: 13px; }
+.chat-widget .chat-status { padding-inline: 16px; min-height: 20px; font-size: 11px; }
+.chat-widget .chat-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin: 0 16px 12px; padding: 10px; }
+.chat-widget .chat-input-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.chat-widget .chat-composer textarea { height: 52px; min-height: 52px; max-height: 52px; resize: none; font-size: 14px; }
+.chat-widget .chat-composer-actions { margin: 0; align-self: center; }
+.chat-widget .chat-composer-actions > span { display: none; }
+.chat-widget .chat-send { min-height: 40px; padding: 8px 12px; }
+.chat-widget .chat-send .icon { display: none; }
+.chat-widget .chat-footer { padding: 10px 16px; gap: 6px; flex-wrap: wrap; }
+.chat-widget .chat-footer p { font-size: 10px; }
+.chat-widget .chat-footer a { font-size: 11px; }
+.chat-widget .chat-error, .chat-widget .chat-notice { margin-inline: 16px; padding: 10px; font-size: 12px; }
+.chat-widget .chat-confirm { padding: 12px 16px; }
+.app-layout:has(+ .chat-widget) .app-footer { padding-bottom: 96px; }
+.sidebar-open .chat-widget { visibility: hidden; }
+@media (max-width: 600px) {
+    .chat-widget { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); width: calc(100% - 24px); }
+    .chat-widget-window { height: min(680px, calc(100dvh - var(--header-height) - 104px)); }
+    .chat-widget .chat-composer textarea { font-size: 16px; }
+}

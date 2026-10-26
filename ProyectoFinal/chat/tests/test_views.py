@@ -1,4 +1,5 @@
 import json
+import re
 from unittest.mock import AsyncMock, patch
 
 from django.contrib.auth import get_user_model
@@ -42,8 +43,75 @@ class ChatViewTests(TestCase):
         self.assertNotContains(response, "test-only")
         self.assertNotContains(response, "test-model")
         self.assertIn("csrftoken", response.cookies)
-        for recurso in ("chat/css/chat.css", "chat/js/chat.js"):
+        for recurso in ("chat/css/chat.css", "chat/js/chat.js", "chat/css/widget.css", "chat/js/widget.js"):
             self.assertIsNotNone(finders.find(recurso))
+
+    def test_floating_panel_requires_login_and_does_not_render_another_layout(self):
+        response = self.client.get(reverse("chat_panel"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "chat/panel.html")
+        self.assertTemplateNotUsed(response, "core/base.html")
+        self.assertContains(response, 'id="chat-widget-app"', count=1)
+        self.assertContains(response, 'id="chat-widget-history"', count=1)
+        self.assertContains(response, 'maxlength="2000"')
+        self.assertNotContains(response, 'id="chat-widget-toggle"')
+        self.assertContains(response, f'data-endpoint="{reverse("chat_api")}"')
+        self.assertContains(response, f'data-clear-endpoint="{reverse("chat_limpiar")}"')
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertIn("csrftoken", response.cookies)
+        self.assertEqual(self.client.post(reverse("chat_panel")).status_code, 405)
+        self.client.logout()
+        self.assertRedirects(
+            self.client.get(reverse("chat_panel")),
+            f"{reverse('login')}?next={reverse('chat_panel')}",
+        )
+
+    @override_settings(GEMINI_API_KEY="widget-secret", GEMINI_MODEL="widget-model")
+    @patch("chat.views.responder", new_callable=AsyncMock)
+    def test_opening_floating_panel_does_not_call_gemini_or_expose_settings(self, responder):
+        response = self.client.get(reverse("chat_panel"))
+        self.assertContains(response, "Gemini · listo para conversar")
+        self.assertContains(response, 'id="chat-widget-configured"')
+        self.assertNotContains(response, "widget-secret")
+        self.assertNotContains(response, "widget-model")
+        responder.assert_not_awaited()
+
+    @override_settings(GEMINI_API_KEY="", GEMINI_MODEL="")
+    def test_floating_panel_displays_missing_configuration(self):
+        response = self.client.get(reverse("chat_panel"))
+        self.assertContains(response, "Configuración pendiente")
+        self.assertContains(response, "GEMINI_API_KEY")
+        self.assertContains(response, 'id="chat-widget-message"')
+
+    def test_full_chat_and_loaded_widget_have_unique_ids(self):
+        page = self.client.get(reverse("chat")).content.decode()
+        panel = self.client.get(reverse("chat_panel")).content.decode()
+        ids = re.findall(r'\bid="([^"]+)"', page + panel)
+        self.assertEqual(len(ids), len(set(ids)))
+
+    @patch("chat.views.responder", new_callable=AsyncMock)
+    def test_floating_panel_and_full_chat_share_session_history_and_clear(self, responder):
+        responder.return_value = {"respuesta": "Respuesta compartida", "llamadas": []}
+        self.post_mensaje({"mensaje": "Pregunta compartida"})
+        for name in ("chat", "chat_panel"):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name))
+                self.assertContains(response, "Pregunta compartida")
+                self.assertContains(response, "Respuesta compartida")
+        self.client.post(reverse("chat_limpiar"))
+        for name in ("chat", "chat_panel"):
+            self.assertNotContains(self.client.get(reverse(name)), "Pregunta compartida")
+
+    def test_floating_panel_escapes_history_and_isolates_user_sessions(self):
+        session = self.client.session
+        session[SESSION_KEY] = [{"role": "user", "text": "</script><img src=x onerror=alert(1)>"}]
+        session.save()
+        response = self.client.get(reverse("chat_panel"))
+        self.assertContains(response, "\\u003C/script\\u003E")
+        self.assertNotContains(response, "<img src=x")
+        other = Client()
+        other.force_login(self.otro)
+        self.assertNotContains(other.get(reverse("chat_panel")), "onerror")
 
     @override_settings(GEMINI_API_KEY="", GEMINI_MODEL="")
     def test_unconfigured_chat_has_clear_state_and_api_error(self):
@@ -150,7 +218,8 @@ class ChatViewTests(TestCase):
             self.assertEqual(cliente.post(
                 reverse(ruta), {"mensaje": "Hola"}, content_type="application/json"
             ).status_code, 403)
-        cliente.get(reverse("chat"))
+        cliente.get(reverse("profile"))
+        cliente.get(reverse("chat_panel"))
         token = cliente.cookies["csrftoken"].value
         responder.return_value = {"respuesta": "Hola", "llamadas": []}
         self.assertEqual(cliente.post(

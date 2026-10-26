@@ -62,6 +62,10 @@ class OrchestratorTests(SimpleTestCase):
         registro = orchestrator.esquema_sin_user(herramientas[0].inputSchema)
         self.assertEqual(set(registro["properties"]["categoria"]["enum"]), set(CATEGORIAS))
         self.assertEqual(registro["properties"]["monto"]["type"], "string")
+        self.assertEqual(registro["properties"]["moneda"]["type"], "string")
+        self.assertIn("tipo_cambio", registro["properties"])
+        self.assertNotIn("moneda", registro["required"])
+        self.assertNotIn("tipo_cambio", registro["required"])
 
     def test_direct_response_rebuilds_text_history_and_injects_local_date(self):
         self.generar.return_value = respuesta_modelo(texto="Hola, ¿en qué te ayudo?")
@@ -125,6 +129,60 @@ class OrchestratorTests(SimpleTestCase):
         self.assertEqual(
             self.generar.await_args.kwargs["contents"][-1].parts[0].function_response.response,
             {"error": "El monto no es válido."},
+        )
+
+    def test_foreign_amount_is_passed_unchanged_to_mcp_and_conversion_returns_to_model(self):
+        conversion = {
+            "monto_original": "10", "moneda_original": "USD", "monto_mxn": "187.39",
+            "tipo_cambio": "18.7388", "fecha_tasa": "2026-10-23", "fuente": "Frankfurter",
+        }
+        self.session.call_tool.return_value = mcp_types.CallToolResult(
+            content=[], structuredContent={
+                "monto": "187.39", "moneda": "MXN", "conversion": conversion,
+            },
+        )
+        self.generar.side_effect = [
+            respuesta_modelo(funciones=[("registrar_gasto", {
+                "monto": "10", "moneda": "USD", "categoria": "comida", "fecha": "2026-10-25",
+            })]),
+            respuesta_modelo(texto="Registrados 187.39 MXN por 10 USD."),
+        ]
+        resultado = self.ejecutar(mensaje="Gasté 10 USD en comida hoy")
+        self.session.call_tool.assert_awaited_once_with("registrar_gasto", arguments={
+            "monto": "10", "moneda": "USD", "categoria": "comida",
+            "fecha": "2026-10-25", "user_id": 17,
+        })
+        self.assertEqual(resultado["llamadas"][0]["estado"], "completada")
+        assert self.generar.await_args is not None
+        kwargs = self.generar.await_args.kwargs
+        self.assertEqual(
+            kwargs["contents"][-1].parts[0].function_response.response["conversion"],
+            conversion,
+        )
+        prompt = kwargs["config"].system_instruction
+        self.assertIn("monto ORIGINAL", prompt)
+        self.assertIn("No la inventes", prompt)
+        self.assertIn("requieren preguntar cuál moneda", prompt)
+        self.assertIn("MXN por 1 unidad", prompt)
+
+    def test_currency_provider_failure_is_returned_for_clarification_without_fake_registration(self):
+        aviso = "No se registró el gasto. Indica el tipo de cambio en MXN por 1 unidad de CAD."
+        self.session.call_tool.return_value = mcp_types.CallToolResult(
+            content=[], structuredContent={"error": aviso},
+        )
+        self.generar.side_effect = [
+            respuesta_modelo(funciones=[("registrar_gasto", {
+                "monto": "10", "moneda": "CAD", "categoria": "comida",
+            })]),
+            respuesta_modelo(texto="No pude consultar la tasa. ¿Cuántos MXN por 1 CAD uso?"),
+        ]
+        resultado = self.ejecutar(mensaje="Gasté 10 CAD en comida")
+        self.assertEqual(resultado["llamadas"][0]["estado"], "error")
+        self.session.call_tool.assert_awaited_once()
+        assert self.generar.await_args is not None
+        self.assertEqual(
+            self.generar.await_args.kwargs["contents"][-1].parts[0].function_response.response,
+            {"error": aviso},
         )
 
     def test_mcp_validation_text_error_can_be_corrected(self):

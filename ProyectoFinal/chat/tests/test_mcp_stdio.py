@@ -125,4 +125,21 @@ class MCPStdioIntegrationTests(SimpleTestCase):
                             self.assertEqual(respuesta["llamadas"][0]["estado"], "completada")
                             self.assertEqual(len(peticiones), 2)
 
+                            convertido = await cliente.call_tool("registrar_gasto", {
+                                "user_id": 8101, "monto": "10", "moneda": "USD",
+                                "tipo_cambio": "20", "categoria": "comida",
+                                "fecha": "2026-01-15",
+                            })
+                            datos = datos_resultado(convertido)
+                            self.assertEqual(datos["monto"], "200.00")
+                            self.assertEqual(datos["moneda"], "MXN")
+                            self.assertEqual(datos["conversion"]["moneda_original"], "USD")
+                            self.assertEqual(datos["conversion"]["fuente"], "usuario")
+                            self.assertIn("10 USD", datos["descripcion"])
+                            resumen_final = await cliente.call_tool(
+                                "obtener_resumen_gastos", {"user_id": 8101}
+                            )
+                            self.assertEqual(datos_resultado(resumen_final)["total"], "200.10")
+                            self.assertEqual(datos_resultado(resumen_final)["cantidad"], 2)
+
             async_to_sync(comprobar)()
