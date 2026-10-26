@@ -76,6 +76,11 @@
                 <a class="nav-link" href="{% url 'gastos' %}" title="Gastos"{% if current == 'gastos' %} aria-current="page"{% endif %}>
                     <svg class="icon" aria-hidden="true"><use href="#icon-expenses"/></svg><span class="nav-label">Gastos</span>
                 </a>
+                {% if user.is_active and user.is_staff %}
+                <a class="nav-link" href="{% url 'admin:index' %}" title="Administración">
+                    <svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg><span class="nav-label">Administración</span>
+                </a>
+                {% endif %}
             </nav>
             {% endwith %}
             <div class="sidebar-note"><span class="note-dot"></span><span class="nav-label">Un paso hacia el orden.</span></div>

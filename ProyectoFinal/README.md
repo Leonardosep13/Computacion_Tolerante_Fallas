@@ -254,6 +254,13 @@ Para acceder al Admin, crea además una cuenta administrativa:
 python manage.py createsuperuser
 ```
 
+Abre <http://127.0.0.1:8000/admin/> e inicia sesión con esa cuenta.
+El menú lateral muestra **Administración** solo a usuarios activos con
+`is_staff=True`. El registro público nunca concede ese permiso. Un usuario
+staff necesita además permisos sobre cada modelo; un superusuario los tiene
+todos. El aislamiento de gastos y perfiles por propietario se conserva:
+no se transfieren los gastos de una cuenta normal a la administrativa.
+
 `runserver` es exclusivamente un servidor de desarrollo. El correo está
 configurado con backend de consola: los enlaces de recuperación se muestran
 en la terminal, no se envían a una bandeja real.
@@ -369,6 +376,45 @@ Una moneda no soportada no se sustituye silenciosamente por otra.
 | Fallo después de ejecutar herramientas | Conserva trazas y avisa de posibles operaciones aplicadas; revisar Gastos antes de repetir |
 | Sesión expirada | Se bloquea el envío y se ofrece iniciar sesión |
 | Panel flotante no disponible | Error visible, reintento y enlace al chat completo |
+| Solicitud inválida, acceso denegado o ruta inexistente | Pantallas 400, 403 y 404 con navegación segura; mantienen su código HTTP |
+| Error inesperado del servidor | Pantalla 500 sin detalles internos; advierte revisar gastos antes de repetir operaciones |
+| Validación CSRF fallida | Pantalla 403 con indicaciones para volver a abrir el formulario o iniciar sesión; no desactiva la protección |
+| Error global en `/api/` | JSON con campo `error` y código HTTP original, incluido CSRF; no entrega HTML al cliente de chat |
+
+### Pantallas de error
+
+Los handlers globales están en `core/errors.py`. Su plantilla independiente
+conserva la paleta y ofrece **Volver al inicio** e **Iniciar sesión**, sin
+consultar usuarios, sesiones, base de datos ni servicios externos. No incluye
+sidebar ni chat: evita que el componente que falló vuelva a romper la pantalla.
+El CSS esencial está integrado, con colores de respaldo si no cargan los
+estáticos. Funciona sin JavaScript.
+
+Las respuestas no se almacenan en caché, no revelan excepciones ni parámetros
+privados y mantienen el registro normal de Django en el servidor. No hay
+redirecciones ni reenvíos automáticos de formularios. Los errores de validación
+ya atendidos por una vista conservan su comportamiento y sus mensajes.
+
+**Django usa estas pantallas 400, 404 y 500 con `DEBUG=False`.** En desarrollo,
+`DEBUG=True` mantiene las páginas técnicas para depurar; CSRF y permisos usan
+las pantallas seguras también en desarrollo. Para verificarlas localmente sin
+cambiar tu `.env`, en Linux/macOS:
+
+```bash
+DEBUG=False ALLOWED_HOSTS=localhost,127.0.0.1 python manage.py runserver --insecure
+```
+
+Visita una ruta inexistente, por ejemplo `/pagina-inexistente/`. `--insecure`
+se usa **solo para esta prueba local**: permite servir estáticos desde
+`runserver` con debug desactivado. En producción configura un servidor de
+estáticos, `DEBUG=False` y tus hosts reales. Las pruebas provocan el 500 de
+forma aislada; no existe una ruta pública para forzar fallos.
+
+Estas pantallas permiten recuperarse de un error, pero no reparan por sí solas
+una caída de la base de datos o del servidor. Si Django no puede arrancar,
+la página de indisponibilidad debe servirla el proxy o servidor de despliegue.
+
+### Protección de operaciones y datos
 
 - Máximo **5 rondas de modelo** y **10 herramientas** por solicitud.
 - Montos persistidos entre **0.01 y 99999999.99 MXN**; no se usan floats para
@@ -400,7 +446,7 @@ python manage.py makemigrations --check --dry-run
 python -m pip check
 ```
 
-**Última verificación: 169 pruebas exitosas**, sin errores de checks ni
+**Última verificación: 187 pruebas exitosas**, sin errores de checks ni
 migraciones pendientes. El número puede cambiar al agregar funcionalidades.
 
 | Área | Comprobaciones |
@@ -412,6 +458,7 @@ migraciones pendientes. El número puede cambiar al agregar funcionalidades.
 | SDK Gemini | Transporte HTTP simulado con serialización real, incluida la segunda petición después de MCP |
 | MCP | Subproceso stdio real con SQLite temporal y operaciones aisladas |
 | Monedas | HTTP simulado, tasas históricas, precisión, validación, errores y recuperación manual |
+| Errores y Admin | 400/403/404/500 reales con debug desactivado, JSON/CSRF, logging, render sin BD/sesión y acceso staff sin elevar permisos |
 
 Las pruebas automatizadas no requieren claves reales ni consumen cuota de
 Gemini o Frankfurter. Se probaron también navegación, teclado, envío simulado

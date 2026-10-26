@@ -87,11 +87,14 @@ ProyectoFinal/
 │   ├── models.py                   # vacío
 │   ├── admin.py                    # vacío
 │   ├── views.py                    # HomeView y UpcomingView con login requerido
+│   ├── errors.py                   # handlers 400/403/404/500 y rechazo CSRF; HTML o JSON
 │   ├── urls.py                     # '' (Inicio)
-│   ├── tests.py                    # pruebas del layout
+│   ├── tests.py                    # layout y acceso al Admin nativo
+│   ├── test_errors.py              # fallos HTTP, CSRF, privacidad y render sin BD/sesión
 │   ├── templates/core/
 │   │   ├── base.html               # header + sidebar + footer; las demás vistas heredan de aquí
 │   │   ├── home.html
+│   │   ├── errors/error.html       # pantalla independiente, accesible y sin JS
 │   │   └── proximamente.html       # página provisional de Chat
 │   └── static/
 │       ├── css/variables.css       # paleta (variables CSS)
@@ -367,7 +370,8 @@ Nombres de ruta actuales (`{% url %}`): `home`, `chat`, `gastos`. La sidebar los
 - La API admite JSON con `mensaje` de 1 a 2000 caracteres. Rechaza JSON inválido,
   tipos incorrectos y cuerpos excesivos. Devuelve 401 JSON si falta sesión,
   400 para mensajes inválidos, 415 para otro content-type y 405 para otro método.
-  Una respuesta CSRF rechazada conserva el 403 nativo de Django.
+  Una respuesta CSRF rechazada conserva el 403 y devuelve JSON con `error`;
+  nunca desactiva la protección ni entrega HTML al cliente de chat.
 - El propietario sale de `await request.auser()`, nunca del body, de `USER_ID`
   ni del historial enviado por el navegador. Cada sesión conserva un historial
   propio en `request.session["chat_historial"]`: solo `role` y `text`, máximo
@@ -544,12 +548,17 @@ Reglas de UI:
 
 ### Layout compartido (implementado)
 
-- `core/templates/core/base.html` aporta header, sidebar y footer. **Toda vista nueva de la app debe heredar de él** (`{% extends "core/base.html" %}`). El Admin conserva su interfaz nativa.
+- `core/templates/core/base.html` aporta header, sidebar y footer. **Toda vista nueva de la app debe heredar de él** (`{% extends "core/base.html" %}`). El Admin conserva su interfaz nativa. Las pantallas de error son la excepción deliberada: una plantilla independiente evita consultar sesión, usuario, BD y chat durante un fallo.
 - Bloques disponibles: `title`, `content`, `extra_head` y `extra_scripts`. El título del `<title>` sale de la variable de contexto `title`.
 - Estilos en `core/static/core/css/layout.css` (usa solo variables de `variables.css`); comportamiento en `core/static/core/js/layout.js`. Los íconos son un sprite SVG inline en `base.html`; para agregar uno, añadir un `<symbol id="icon-...">`.
 - Sidebar: se contrae a íconos en escritorio y se abre como panel con fondo superpuesto en móvil (≤ 760 px). Se cierra con el botón, el fondo o Escape. Incluye navegación por teclado, estado activo (`aria-current`) y enlace "Saltar al contenido". Sin JavaScript, la navegación permanece visible.
 - Sin sesión se comparten header y footer, pero no se renderiza la sidebar ni su botón. El script del layout contempla esa ausencia. Las pantallas de acceso usan una tarjeta centrada y estilos en `registration/static/registration/css/account.css`, sin dependencias de frontend nuevas ni colores fuera de la paleta compartida.
 - Con sesión, el header incluye acceso a Mi perfil y un formulario POST con CSRF para Cerrar sesión. Al salir se redirige a `home`, que al no tener sesión muestra el login.
+- La sidebar incluye **Administración** solo si `user.is_active` e `is_staff`.
+  El destino es `admin:index` (`/admin/`); Django conserva sus permisos nativos.
+  El alta pública no eleva privilegios. Aprovisionar administradores con
+  `manage.py createsuperuser`, no con credenciales fijas ni cambios automáticos
+  de permisos. Staff sin permisos de modelo no puede administrar gastos.
 - Para añadir una sección al menú, agregar un `<a class="nav-link">` en `base.html` (con su ícono y su nombre de ruta para el estado activo) y la URL correspondiente.
 - `/chat/` usa `chat/chat.html` y el panel reutilizable `chat/panel.html`.
   El layout carga CSS/JS del chat y de la burbuja solo cuando hay sesión;
@@ -562,11 +571,42 @@ Reglas de UI:
   la tabla semántica; los badges usan punto de color y nombre, y los montos son
   neutros. Los filtros funcionan sin JavaScript.
 
+### Pantallas de error y recuperación
+
+- `SpendingAdmin/urls.py` registra `handler400`, `handler403`, `handler404` y
+  `handler500` en `core/errors.py`. `CSRF_FAILURE_VIEW` apunta a
+  `core.errors.csrf_failure`. Las excepciones conservan su código HTTP y el
+  logging nativo; no se capturan indiscriminadamente ni se simula éxito.
+- Se usa `core/errors/error.html` sin `RequestContext` ni procesadores de
+  contexto: no accede a usuario/sesión ni ORM. Reutiliza variables de paleta
+  con valores de respaldo y CSS esencial inline para seguir legible sin
+  estáticos, sin JavaScript y sin la burbuja. Los únicos enlaces son Inicio
+  y Login, sin destinos tomados del usuario.
+- Las rutas `/api/` reciben `{"error": "..."}` en los errores globales y CSRF;
+  las respuestas explícitas existentes de las vistas no se sustituyen.
+  Todas las respuestas de estos handlers incluyen `no-store`.
+- No se muestran excepción, traceback, motivo CSRF, datos del formulario ni
+  querystring. El 500 advierte revisar gastos antes de repetir una operación;
+  no hay reenvío automático, rollback simulado ni ruta pública de fallos.
+- Los handlers 400/404/500 se usan con `DEBUG=False`; Django mantiene sus
+  páginas técnicas con `DEBUG=True`. Permisos y CSRF usan la pantalla segura
+  en ambos modos. Para una prueba local con estáticos:
+  `DEBUG=False ALLOWED_HOSTS=localhost,127.0.0.1 python manage.py runserver --insecure`.
+  `--insecure` no es para producción. Una caída del proceso o error que impida
+  iniciar Django debe atenderse desde el servidor/proxy de despliegue.
+
 ## 10. Pruebas
 
 Ejecución: `.venv/bin/python manage.py test`, desde `ProyectoFinal/` (ver 4.3).
 
 Implementadas: `core/tests.py` verifica que Inicio, Chat y Gastos requieran login y usen el layout compartido (header, sidebar, footer, enlace activo único), que abrir la app sin sesión muestre el login, que Chat ya no sea provisional y que los estáticos se resuelvan.
+
+También verifica el acceso al Admin: enlace staff, rechazo de anónimos y
+cuentas normales, interfaz nativa y permisos por modelo sin elevación implícita.
+`core/test_errors.py` provoca excepciones en rutas exclusivas de pruebas con
+`DEBUG=False`, comprueba handlers registrados en la URLconf real, códigos
+400/403/404/500, JSON en API y CSRF real, host no permitido, privacidad,
+no-store, logging de excepción y render con BD/sesión/contexto inaccesibles.
 
 `chat/tests/` prueba mensajes y JSON inválidos, sesión/CSRF reales, historial
 limitado y aislado, limpieza sin borrar gastos, respuestas parciales fallidas,

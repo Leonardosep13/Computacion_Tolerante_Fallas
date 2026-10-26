@@ -1,0 +1,47 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Error {{ status }} | SpendingAdmin</title>
+    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--background, #f8fafc); color: var(--text, #0f172a); font: 15px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        a { color: var(--primary, #0f766e); }
+        a:focus-visible { outline: 3px solid var(--primary, #0f766e); outline-offset: 4px; }
+        header { padding: 22px 24px; border-bottom: 1px solid var(--border, #e2e8f0); background: var(--surface, #fff); }
+        .brand { color: var(--text, #0f172a); font-size: 20px; font-weight: 700; text-decoration: none; letter-spacing: -.7px; }
+        .brand span { color: var(--primary, #0f766e); }
+        main { flex: 1; display: grid; place-items: center; width: 100%; padding: 40px 20px; }
+        .error-card { width: 100%; max-width: 600px; padding: clamp(24px, 5vw, 48px); background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 16px; text-align: center; }
+        .error-code { display: inline-block; margin: 0 0 24px; padding: 8px 16px; border-radius: 10px; background: var(--primary-soft, #f0fdfa); color: var(--primary, #0f766e); font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+        h1 { margin: 0 0 18px; font-size: clamp(26px, 4vw, 36px); line-height: 1.25; letter-spacing: -1px; overflow-wrap: anywhere; }
+        .error-message { margin: 0; color: var(--text-secondary, #64748b); overflow-wrap: anywhere; }
+        .error-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+        .error-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 18px; border: 1px solid var(--border, #e2e8f0); border-radius: 9px; font-weight: 600; font-size: 14px; text-decoration: none; }
+        .error-actions .primary { background: var(--primary, #0f766e); border-color: var(--primary, #0f766e); color: var(--surface, #fff); }
+        .error-actions .primary:hover { background: var(--primary-hover, #115e59); }
+        .error-actions .secondary:hover { background: var(--primary-soft, #f0fdfa); }
+        footer { padding: 20px; color: var(--text-secondary, #64748b); font-size: 12px; text-align: center; }
+        @media (max-width: 400px) { .error-actions { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header><a class="brand" href="{% url 'home' %}">Spending<span>Admin</span></a></header>
+    <main id="contenido">
+        <section class="error-card" aria-labelledby="error-title">
+            <p class="error-code">Error {{ status }}</p>
+            <h1 id="error-title">{{ title }}</h1>
+            <p class="error-message">{{ message }}</p>
+            <nav class="error-actions" aria-label="Opciones para continuar">
+                <a class="primary" href="{% url 'home' %}">Volver al inicio</a>
+                <a class="secondary" href="{% url 'login' %}">Iniciar sesión</a>
+            </nav>
+        </section>
+    </main>
+    <footer>SpendingAdmin · Menos ruido. Más claridad.</footer>
+</body>
+</html>

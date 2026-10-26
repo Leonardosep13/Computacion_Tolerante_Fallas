@@ -3,6 +3,15 @@
 Repositorio de entregas para la materia **Computacion Tolerante a Fallas**.
 Cada tarea se guarda en un directorio independiente para que pueda ejecutarse y evaluarse de forma aislada durante el curso.
 
+## Proyecto final: SpendingAdmin
+
+Gestor de gastos personales con **Django + FastMCP + Google AI Studio**:
+chat, listado por usuario, burbuja global y conversiones a MXN.
+
+Consulta [la guía del proyecto final](ProyectoFinal/README.md) para ver las
+capturas de pantalla, instalación, configuración, arquitectura, uso, pruebas
+y manejo de fallas.
+
 ## Estructura del repositorio
 
 Cada tarea debe utilizar el siguiente formato:

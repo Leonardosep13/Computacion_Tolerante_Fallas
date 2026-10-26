@@ -70,6 +70,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'SpendingAdmin.urls'
+CSRF_FAILURE_VIEW = 'core.errors.csrf_failure'
 
 TEMPLATES = [
     {

@@ -82,3 +82,60 @@ class LayoutTests(TestCase):
         for asset in ("css/variables.css", "core/css/layout.css", "core/js/layout.js"):
             with self.subTest(asset=asset):
                 self.assertIsNotNone(finders.find(asset))
+
+
+class AdminAccessTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        users = get_user_model()
+        cls.user = users.objects.create_user(username="regular-user")
+        cls.staff = users.objects.create_user(username="staff-user", is_staff=True)
+        cls.admin = users.objects.create_superuser(
+            username="admin-user", email="admin@example.com", password="Admin-Secret-219!"
+        )
+
+    def test_sidebar_offers_admin_only_to_staff(self):
+        for user in (self.user, self.staff, self.admin):
+            with self.subTest(username=user.username):
+                self.client.force_login(user)
+                response = self.client.get(reverse("home"))
+                if user.is_staff:
+                    self.assertContains(response, f'href="{reverse("admin:index")}"')
+                else:
+                    self.assertNotContains(response, f'href="{reverse("admin:index")}"')
+        self.client.logout()
+        self.assertNotContains(
+            self.client.get(reverse("login")), f'href="{reverse("admin:index")}"'
+        )
+
+    def test_anonymous_and_regular_users_cannot_enter_admin(self):
+        for user in (None, self.user):
+            with self.subTest(user=user):
+                if user:
+                    self.client.force_login(user)
+                response = self.client.get(reverse("admin:index"))
+                self.assertRedirects(
+                    response,
+                    f'{reverse("admin:login")}?next={reverse("admin:index")}',
+                )
+
+    def test_staff_can_open_the_native_admin_but_has_no_implicit_model_permissions(self):
+        self.client.force_login(self.staff)
+        response = self.client.get(reverse("admin:index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "admin/index.html")
+        self.assertNotContains(
+            response, f'href="{reverse("admin:spending_gasto_changelist")}"'
+        )
+        self.assertEqual(
+            self.client.get(reverse("admin:spending_gasto_changelist")).status_code, 403
+        )
+
+    def test_superuser_can_open_registered_models(self):
+        self.client.force_login(self.admin)
+        for name in (
+            "admin:index", "admin:spending_gasto_changelist",
+            "admin:registration_profile_changelist", "admin:auth_user_changelist",
+        ):
+            with self.subTest(page=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)
