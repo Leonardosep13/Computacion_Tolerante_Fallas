@@ -1,0 +1,40 @@
+.account-page { width: 100%; max-width: 520px; margin: 0 auto; }
+.account-card { padding: 36px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+.account-heading { margin-bottom: 28px; }
+.account-heading .feature-icon { margin-bottom: 24px; }
+.account-heading h1 { font-size: clamp(26px, 3vw, 32px); letter-spacing: -1px; }
+.account-heading > p:last-child { color: var(--text-secondary); margin: 0; font-size: 14px; }
+.account-form { display: grid; gap: 22px; }
+.form-field { min-width: 0; }
+.form-field > label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 600; }
+.form-field input:not([type="checkbox"]):not([type="hidden"]), .form-field textarea, .form-field select { width: 100%; min-width: 0; padding: 11px 13px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 9px; font: inherit; }
+.form-field textarea { resize: vertical; min-height: 100px; }
+.form-field input[readonly] { background: var(--background); color: var(--text-secondary); }
+.form-field input[type="checkbox"] { accent-color: var(--primary); width: 16px; height: 16px; vertical-align: middle; }
+.form-field input[type="file"] { font-size: 13px; }
+.form-field input::file-selector-button { padding: 6px 10px; margin-right: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); color: var(--text); cursor: pointer; }
+.form-field input[aria-invalid="true"] { border-color: var(--error); }
+.field-help, .field-errors, .form-field:has(input[type="file"]) { overflow-wrap: anywhere; font-size: 12px; }
+.field-help { margin-top: 8px; color: var(--text-secondary); }
+.field-help ul { padding-left: 18px; margin: 8px 0 0; }
+.field-help p { margin: 0; }
+.field-errors { list-style: none; padding: 0; margin: 7px 0 0; color: var(--error); }
+.account-notice { margin-bottom: 24px; padding: 14px 16px; border: 1px solid var(--primary); border-radius: 9px; background: var(--primary-soft); color: var(--primary-hover); font-size: 13px; overflow-wrap: anywhere; }
+.account-notice p { margin: 0; }
+.account-notice-error { border-color: var(--error); background: var(--surface); color: var(--error); }
+.account-submit { width: 100%; justify-content: center; margin-top: 2px; border: 0; font: inherit; font-size: 14px; cursor: pointer; }
+.account-links { display: flex; flex-wrap: wrap; gap: 12px 20px; justify-content: space-between; margin-top: 22px; font-size: 13px; }
+.text-link { color: var(--primary); font-weight: 600; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.text-link:hover { color: var(--primary-hover); }
+.account-switch { margin: 28px 0 0; padding-top: 24px; border-top: 1px solid var(--border); text-align: center; color: var(--text-secondary); font-size: 13px; }
+.account-copy { color: var(--text-secondary); font-size: 14px; }
+.avatar-preview { display: flex; align-items: center; gap: 16px; }
+.avatar-image, .avatar-placeholder { width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; }
+.avatar-image { object-fit: cover; border: 1px solid var(--border); }
+.avatar-placeholder { display: inline-flex; align-items: center; justify-content: center; background: var(--primary-soft); color: var(--primary); }
+.avatar-preview p { margin: 0; overflow-wrap: anywhere; }
+.avatar-preview .field-help { margin-top: 3px; }
+@media (max-width: 480px) {
+    .account-card { padding: 28px 22px; }
+    .account-links { flex-direction: column; align-items: flex-start; }
+}

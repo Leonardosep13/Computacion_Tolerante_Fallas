@@ -1,0 +1,21 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'registration/css/account.css' %}">
+{% endblock %}
+{% block content %}
+<section class="account-page" aria-labelledby="account-title">
+    <div class="account-card">
+        <header class="account-heading">
+            <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-{% block account_icon %}lock{% endblock %}"/></svg></span>
+            <p class="eyebrow">{% block account_eyebrow %}TU CUENTA{% endblock %}</p>
+            <h1 id="account-title">{% block account_heading %}{% endblock %}</h1>
+            <p>{% block account_description %}{% endblock %}</p>
+        </header>
+        {% for message in messages %}
+        <div class="account-notice{% if message.level >= 40 %} account-notice-error{% endif %}" role="status">{{ message }}</div>
+        {% endfor %}
+        {% block account_content %}{% endblock %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "registration/account_base.html" %}
+{% block title %}Mi perfil{% endblock %}
+{% block account_icon %}user{% endblock %}
+{% block account_heading %}Mi perfil{% endblock %}
+{% block account_description %}Un espacio a tu medida. Actualiza tus datos personales.{% endblock %}
+{% block account_content %}
+<form method="post" enctype="multipart/form-data" class="account-form">
+    {% csrf_token %}
+    <div class="avatar-preview">
+        {% if object.avatar %}
+        <img class="avatar-image" src="{{ object.avatar.url }}" alt="Avatar de {{ user.username }}" width="64" height="64">
+        {% else %}
+        <span class="avatar-placeholder" role="img" aria-label="Sin avatar"><svg class="icon" aria-hidden="true"><use href="#icon-user"/></svg></span>
+        {% endif %}
+        <div><p>{{ user.username }}</p><p class="field-help">Tu perfil personal</p></div>
+    </div>
+    <div class="form-field">
+        <label for="profile-email">Correo electrónico</label>
+        <input id="profile-email" type="email" value="{{ user.email }}" readonly aria-describedby="profile-email-help">
+        <div class="field-help" id="profile-email-help">Para actualizarlo, utiliza <a class="text-link" href="{% url 'profile_email' %}">Cambiar correo</a>.</div>
+    </div>
+    {% include "registration/includes/form_fields.html" %}
+    <button class="primary-link account-submit" type="submit">Guardar cambios</button>
+</form>
+<div class="account-links">
+    <a class="text-link" href="{% url 'password_change' %}">Cambiar contraseña</a>
+    <a class="text-link" href="{% url 'home' %}">Volver al inicio</a>
+</div>
+{% endblock %}

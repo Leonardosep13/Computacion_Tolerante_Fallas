@@ -1,0 +1,14 @@
+{% extends "registration/account_base.html" %}
+{% block title %}Crear cuenta{% endblock %}
+{% block account_icon %}user{% endblock %}
+{% block account_eyebrow %}UN NUEVO COMIENZO{% endblock %}
+{% block account_heading %}Más claridad, desde hoy.{% endblock %}
+{% block account_description %}Crea tu cuenta y da el primer paso para organizar tus finanzas.{% endblock %}
+{% block account_content %}
+<form method="post" class="account-form">
+    {% csrf_token %}
+    {% include "registration/includes/form_fields.html" %}
+    <button class="primary-link account-submit" type="submit">Crear cuenta <svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+</form>
+<p class="account-switch">¿Ya tienes cuenta? <a class="text-link" href="{% url 'login' %}">Iniciar sesión</a></p>
+{% endblock %}

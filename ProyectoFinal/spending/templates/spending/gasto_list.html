@@ -1,0 +1,129 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'spending/css/spending.css' %}">
+{% endblock %}
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">TUS FINANZAS, EN PERSPECTIVA</p>
+    <h1>Gastos</h1>
+    <p>Consulta tus movimientos y encuentra lo que necesitas, sin complicaciones.</p>
+</section>
+
+<section class="expense-summary" aria-label="Resumen de los movimientos filtrados">
+    <article class="expense-stat">
+        <p>Total registrado</p>
+        <h2>{% if filtros_validos %}${{ resumen.total|floatformat:"2g" }} <span>MXN</span>{% else %}—{% endif %}</h2>
+        <small>De todos los movimientos que coinciden con tus filtros</small>
+    </article>
+    <article class="expense-stat">
+        <p>Movimientos</p>
+        <h2>{% if filtros_validos %}{{ resumen.cantidad }}{% else %}—{% endif %}</h2>
+        <small>{% if filtros_activos %}En la selección actual{% else %}En todo tu historial{% endif %}</small>
+    </article>
+    <article class="expense-stat">
+        <p>Gasto promedio</p>
+        <h2>{% if filtros_validos %}${{ resumen.promedio|floatformat:"2g" }} <span>MXN</span>{% else %}—{% endif %}</h2>
+        <small>Por movimiento</small>
+    </article>
+</section>
+
+<section class="expense-panel" aria-labelledby="filter-title">
+    <div class="expense-panel-heading">
+        <h2 id="filter-title">Filtrar movimientos</h2>
+        <p>Las fechas inicial y final están incluidas.</p>
+    </div>
+    <form class="expense-filters" method="get" action="{% url 'gastos' %}">
+        {% if filtros.non_field_errors %}
+        <div class="expense-filter-error" role="alert">{{ filtros.non_field_errors }}</div>
+        {% endif %}
+        {% for field in filtros %}
+        <div class="expense-filter-field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+            <div class="expense-field-error" id="{{ field.auto_id }}_error" role="alert">{{ field.errors }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <div class="expense-filter-actions">
+            <button class="expense-button" type="submit">Aplicar filtros</button>
+            <a class="expense-reset" href="{% url 'gastos' %}">Limpiar</a>
+        </div>
+    </form>
+</section>
+
+<section class="expense-panel" aria-labelledby="history-title">
+    <div class="expense-panel-heading expense-history-heading">
+        <div>
+            <h2 id="history-title">Tus movimientos</h2>
+            <p>Del más reciente al más antiguo · Importes en pesos mexicanos</p>
+        </div>
+        {% if filtros_validos and resumen.cantidad %}
+        <span class="expense-count">{{ page_obj.start_index }}–{{ page_obj.end_index }} de {{ resumen.cantidad }}</span>
+        {% endif %}
+    </div>
+    {% if not filtros_validos %}
+    <div class="expense-empty" role="alert">
+        <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-expenses"/></svg></span>
+        <h3>Revisa los filtros</h3>
+        <p>Corrige los campos indicados para consultar tus movimientos.</p>
+    </div>
+    {% elif gastos %}
+    <table class="expense-table">
+        <caption class="expense-sr-only">Gastos personales, ordenados por fecha descendente</caption>
+        <thead>
+            <tr>
+                <th scope="col">Fecha</th>
+                <th scope="col">Categoría</th>
+                <th scope="col">Descripción</th>
+                <th scope="col" class="expense-amount">Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for gasto in gastos %}
+            <tr>
+                <td class="expense-date"><time datetime="{{ gasto.fecha|date:'Y-m-d' }}">{{ gasto.fecha|date:"d M Y" }}</time></td>
+                <td class="expense-category">
+                    <span class="category-badge">
+                        <span class="category-dot" style="--category-color: {{ gasto.categoria_color }};" aria-hidden="true"></span>
+                        {{ gasto.get_categoria_display }}
+                    </span>
+                </td>
+                <td class="expense-description">{{ gasto.descripcion|default:"Sin descripción" }}</td>
+                <td class="expense-amount">${{ gasto.monto|floatformat:"2g" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if is_paginated %}
+    <nav class="expense-pagination" aria-label="Paginación de gastos">
+        {% if page_obj.has_previous %}
+        <a href="{% querystring page=page_obj.previous_page_number %}" rel="prev">Anterior</a>
+        {% else %}
+        <span aria-disabled="true">Anterior</span>
+        {% endif %}
+        <p>Página <strong>{{ page_obj.number }}</strong> de {{ paginator.num_pages }}</p>
+        {% if page_obj.has_next %}
+        <a href="{% querystring page=page_obj.next_page_number %}" rel="next">Siguiente</a>
+        {% else %}
+        <span aria-disabled="true">Siguiente</span>
+        {% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="expense-empty">
+        <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-expenses"/></svg></span>
+        {% if filtros_activos %}
+        <h3>No encontramos movimientos</h3>
+        <p>Prueba con otra categoría o amplía el intervalo de fechas.</p>
+        <a class="expense-reset" href="{% url 'gastos' %}">Ver todos los gastos</a>
+        {% else %}
+        <h3>Tu historial empieza aquí</h3>
+        <p>Todavía no tienes gastos registrados. Los movimientos que registres aparecerán en este espacio.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+<p class="expense-privacy"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg> Solo tú puedes ver tus movimientos.</p>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">TU ESPACIO PERSONAL</p>
+    <h1>Un lugar para poner tus finanzas en orden.</h1>
+    <p>Todo empieza con una visión más clara de tus gastos. Elige por dónde comenzar.</p>
+</section>
+<section class="welcome-panel" aria-labelledby="welcome-title">
+    <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-wallet"/></svg></span>
+    <div>
+        <span class="badge">EN CONSTRUCCIÓN</span>
+        <h2 id="welcome-title">Tus finanzas, sin complicaciones.</h2>
+        <p>Consulta tus movimientos o regístralos conversando con el asistente. Seguimos preparando nuevas herramientas para organizar tus finanzas.</p>
+    </div>
+</section>
+<section class="feature-grid" aria-label="Explorar herramientas">
+    <a class="feature-card" href="{% url 'chat' %}">
+        <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg></span>
+        <h2>Chat</h2>
+        <p>Un espacio para conversar sobre tus finanzas y resolver consultas de forma sencilla.</p>
+        <span class="card-action">Explorar Chat <svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></span>
+    </a>
+    <a class="feature-card" href="{% url 'gastos' %}">
+        <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-expenses"/></svg></span>
+        <h2>Gastos</h2>
+        <p>Un lugar para consultar tus movimientos y tener una perspectiva de tus hábitos.</p>
+        <span class="card-action">Explorar Gastos <svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></span>
+    </a>
+</section>
+{% endblock %}

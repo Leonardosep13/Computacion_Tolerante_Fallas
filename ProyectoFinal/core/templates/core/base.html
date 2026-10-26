@@ -1,0 +1,88 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ title|default:"Inicio" }}{% endblock %} | SpendingAdmin</title>
+    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/layout.css' %}">
+    <script src="{% static 'core/js/layout.js' %}" defer></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+        <symbol id="icon-wallet" viewBox="0 0 24 24"><path d="M20 8V5a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h14v11H6a3 3 0 0 1-3-3V6m17 6h-5v5h5"/><path d="M17 14.5h.01"/></symbol>
+        <symbol id="icon-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v11h-7v-7h-4v7H3Z"/></symbol>
+        <symbol id="icon-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H3l2-5a8.5 8.5 0 1 1 16-3.5Z"/><path d="M8 11h8m-8 4h5"/></symbol>
+        <symbol id="icon-expenses" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Zm3 5h6m-6 4h6"/></symbol>
+        <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+        <symbol id="icon-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></symbol>
+        <symbol id="icon-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol>
+        <symbol id="icon-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+        <symbol id="icon-logout" viewBox="0 0 24 24"><path d="M9 4H4v16h5m5-13 5 5-5 5m-6-5h11"/></symbol>
+    </svg>
+    <div class="app-layout{% if not user.is_authenticated %} app-layout-public{% endif %}">
+        <header class="app-header">
+            <div class="header-brand">
+                {% if user.is_authenticated %}
+                <button class="icon-button menu-toggle" type="button" aria-label="Cerrar menú de navegación" aria-controls="sidebar" aria-expanded="true" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#icon-menu"/></svg>
+                </button>
+                {% endif %}
+                <a class="brand" href="{% url 'home' %}" aria-label="SpendingAdmin">
+                    <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#icon-wallet"/></svg></span>
+                    <span class="brand-name">Spending<span class="brand-accent">Admin</span></span>
+                </a>
+            </div>
+            {% if user.is_authenticated %}
+            <nav class="account-nav" aria-label="Mi cuenta">
+                <a class="account-action" href="{% url 'profile' %}" aria-label="Mi perfil">
+                    <svg class="icon" aria-hidden="true"><use href="#icon-user"/></svg>
+                    <span class="account-action-label">Mi perfil</span>
+                </a>
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button class="account-action" type="submit" aria-label="Cerrar sesión">
+                        <svg class="icon" aria-hidden="true"><use href="#icon-logout"/></svg>
+                        <span class="account-action-label">Salir</span>
+                    </button>
+                </form>
+            </nav>
+            {% else %}
+            <span class="header-caption">Tu espacio de finanzas personales</span>
+            {% endif %}
+        </header>
+        {% if user.is_authenticated %}
+        <aside class="app-sidebar" id="sidebar" aria-label="Menú principal">
+            <p class="nav-heading">Mi espacio</p>
+            {% with current=request.resolver_match.url_name %}
+            <nav class="sidebar-nav" aria-label="Navegación principal">
+                <a class="nav-link" href="{% url 'home' %}" title="Inicio"{% if current == 'home' %} aria-current="page"{% endif %}>
+                    <svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg><span class="nav-label">Inicio</span>
+                </a>
+                <a class="nav-link" href="{% url 'chat' %}" title="Chat"{% if current == 'chat' %} aria-current="page"{% endif %}>
+                    <svg class="icon" aria-hidden="true"><use href="#icon-chat"/></svg><span class="nav-label">Chat</span>
+                </a>
+                <a class="nav-link" href="{% url 'gastos' %}" title="Gastos"{% if current == 'gastos' %} aria-current="page"{% endif %}>
+                    <svg class="icon" aria-hidden="true"><use href="#icon-expenses"/></svg><span class="nav-label">Gastos</span>
+                </a>
+            </nav>
+            {% endwith %}
+            <div class="sidebar-note"><span class="note-dot"></span><span class="nav-label">Un paso hacia el orden.</span></div>
+        </aside>
+        <button class="sidebar-backdrop" type="button" aria-label="Cerrar menú de navegación" hidden></button>
+        {% endif %}
+        <main class="app-main" id="contenido" tabindex="-1">
+            {% block content %}{% endblock %}
+        </main>
+        <footer class="app-footer">
+            <span>© {% now "Y" %} SpendingAdmin</span>
+            <span>Menos ruido. Más claridad.</span>
+        </footer>
+    </div>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

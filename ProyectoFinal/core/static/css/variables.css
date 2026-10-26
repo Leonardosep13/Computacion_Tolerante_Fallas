@@ -1,0 +1,25 @@
+:root {
+    --primary: #0f766e;
+    --primary-hover: #115e59;
+    --primary-soft: #f0fdfa;
+    --background: #f8fafc;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --text-secondary: #64748b;
+    --success: #16a34a;
+    --warning: #d97706;
+    --error: #dc2626;
+    --category-comida: #0f766e;
+    --category-transporte: #2563eb;
+    --category-entretenimiento: #7c3aed;
+    --category-servicios: #d97706;
+    --category-salud: #db2777;
+    --category-educacion: #0891b2;
+    --category-otros: #94a3b8;
+    --overlay: rgb(15 23 42 / 35%);
+    --shadow: 0 8px 24px rgb(15 23 42 / 4%);
+    --sidebar-width: 244px;
+    --header-height: 76px;
+    --radius: 16px;
+}

@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">MI ESPACIO / {{ title|upper }}</p>
+    <h1>{{ title }}</h1>
+    <p>{{ description }}</p>
+</section>
+<section class="empty-state" aria-labelledby="upcoming-title">
+    <span class="feature-icon"><svg class="icon" aria-hidden="true"><use href="#icon-{{ icon }}"/></svg></span>
+    <span class="badge">PRÓXIMAMENTE</span>
+    <h2 id="upcoming-title">Estamos preparando este espacio.</h2>
+    <p>{{ title }} estará disponible en una próxima actualización. Por ahora puedes seguir explorando desde el menú.</p>
+    <a class="primary-link" href="{% url 'home' %}">Volver al inicio <svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></a>
+</section>
+{% endblock %}
